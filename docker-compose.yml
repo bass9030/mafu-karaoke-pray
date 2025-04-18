@@ -1,16 +1,18 @@
 version: "3.8"
 services:
-    app:
+    mafumafu-karaoke-pray:
         build:
             context: .
             dockerfile: ./dockerfile
-        container_name: mafumafu-karaoke-dday
+        container_name: mafumafu-karaoke-pray
         volumes:
-            - /karaoke-dday-db:/usr/src/app/db
+            - /mafumafu-karaoke-pray:/usr/src/app/db
         environment:
             X_CT0_TOKEN: ${X_CT0_TOKEN}
             X_AUTH_TOKEN: ${X_AUTH_TOKEN}
             DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
         networks:
-            - mafumafu-karaoke-dday
+            - mafumafu-karaoke-pray
         restart: unless-stopped
+networks:
+    mafumafu-karaoke-pray:
