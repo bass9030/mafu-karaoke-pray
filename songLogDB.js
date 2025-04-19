@@ -1,4 +1,4 @@
-const sqlite3 = require("sqlite3");
+const sqlite3 = require("better-sqlite3");
 /**
  * @enum {{
  * TJ: 0,
@@ -15,35 +15,24 @@ class songLogDB {
     }
 
     openDB() {
-        this.db = new sqlite3.Database("./db/songlog.db");
+        this.db = sqlite3("./db/songlog.db");
     }
 
     async initializeTable() {
-        return new Promise((resolve, reject) => {
-            this.db.exec(
-                "CREATE TABLE IF NOT EXISTS songLog (type INTEGER, songId INTEGER, CONSTRAINT song_id_type_grpup_pk PRIMARY KEY(type, songId));",
-                (err) => {
-                    if (!!err) {
-                        reject(err);
-                        return;
-                    }
-                    this.db
-                        .exec(
-                            "CREATE TABLE IF NOT EXISTS startDate (id INTEGER PRIMARY KEY, date INTEGER);"
-                        )
-                        .run(
-                            "INSERT INTO startDate VALUES (1, ?)",
-                            new Date().getTime(),
-                            (_, err) => {
-                                if (!!err) {
-                                    reject(err);
-                                    return;
-                                } else resolve();
-                            }
-                        );
-                }
-            );
-        });
+        await this.db.exec(
+            "CREATE TABLE IF NOT EXISTS songLog (type INTEGER, songId INTEGER, CONSTRAINT song_id_type_grpup_pk PRIMARY KEY(type, songId));"
+        );
+        await this.db.exec(
+            "CREATE TABLE IF NOT EXISTS tweetLog (year INTEGER, month INTEGER, date INTEGER, CONSTRAINT song_id_type_grpup_pk PRIMARY KEY(year, month, date));"
+        );
+        await this.db.exec(
+            "CREATE TABLE IF NOT EXISTS startDate (id INTEGER PRIMARY KEY, date INTEGER);"
+        );
+        try {
+            await this.db
+                .prepare("INSERT INTO startDate VALUES (1, ?)")
+                .run(new Date().getTime());
+        } catch {}
     }
 
     /**
@@ -51,15 +40,9 @@ class songLogDB {
      * @param {import('./getKaraokeNewSong.js').songInfo} songInfo
      */
     async addSong(songInfo) {
-        return new Promise((resolve, reject) => {
-            this.db
-                .prepare("INSERT INTO songLog VALUES (?, ?)")
-                .run(songInfo.type, songInfo.songId, (_, err) => {
-                    if (!!err) reject(err);
-                    else resolve();
-                })
-                .finalize();
-        });
+        await this.db
+            .prepare("INSERT INTO songLog VALUES (?, ?)")
+            .run(songInfo.type, songInfo.songId);
     }
 
     /**
@@ -68,15 +51,9 @@ class songLogDB {
      * @returns {Promise<songInfo[]>}
      */
     async getSong(songInfo) {
-        return new Promise((resolve, reject) => {
-            this.db
-                .prepare("SELECT * FROM songLog WHERE type = ? AND songId = ?;")
-                .all(songInfo.type, songInfo.songId, (err, row) => {
-                    if (!!err) reject(err);
-                    else resolve(row);
-                })
-                .finalize();
-        });
+        return await this.db
+            .prepare("SELECT * FROM songLog WHERE type = ? AND songId = ?;")
+            .all(songInfo.type, songInfo.songId);
     }
 
     /**
@@ -84,18 +61,40 @@ class songLogDB {
      * @returns {Promise<number>}
      */
     async getDDay() {
-        return new Promise((resolve, reject) => {
-            this.db.get("SELECT * FROM startDate;", (err, row) => {
-                if (!!err) reject(err);
-                else
-                    resolve(
-                        Math.floor(
-                            (new Date().getTime() - row["date"]) /
-                                (86400 * 1000)
-                        ) + 1
-                    );
-            });
-        });
+        let row = await this.db.prepare("SELECT * FROM startDate;").get();
+        return (
+            Math.floor((new Date().getTime() - row["date"]) / (86400 * 1000)) +
+            1
+        );
+    }
+
+    /**
+     *
+     * @param {Date} date
+     * @returns
+     */
+    async setSent(date) {
+        try {
+            await this.db
+                .prepare("INSERT INTO tweetLog VALUES (?, ?, ?);")
+                .run(date.getFullYear(), date.getMonth() + 1, date.getDate());
+        } catch {}
+    }
+
+    async isSent(date) {
+        return (
+            (
+                await this.db
+                    .prepare(
+                        "SELECT * FROM tweetLog WHERE year = ? AND month = ? AND date = ?;"
+                    )
+                    .get(
+                        date.getFullYear(),
+                        date.getMonth() + 1,
+                        date.getDate()
+                    )
+            )?.length > 0
+        );
     }
 
     /**
@@ -104,16 +103,9 @@ class songLogDB {
      * @returns {Promise<>}
      */
     async setDDay(date) {
-        return new Promise((resolve, reject) => {
-            this.db.run(
-                "UPDATE startDate SET date = ? WHERE id = 1;",
-                date.getTime(),
-                (_, err) => {
-                    if (!!err) reject(err);
-                    else resolve();
-                }
-            );
-        });
+        await this.db
+            .prepare("UPDATE startDate SET date = ? WHERE id = 1;")
+            .run(date.getTime());
     }
 
     closeDB() {
