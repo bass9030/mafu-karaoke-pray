@@ -9,3 +9,5 @@ async function sendWebhook(url, content) {
 
     return await res.json();
 }
+
+module.exports = sendWebhook;
