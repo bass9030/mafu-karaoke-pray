@@ -1,3 +1,4 @@
+const twitterText = require("twitter-text");
 const features = {
     premium_content_api_read_enabled: false,
     communities_web_enable_tweet_community_results_fetch: true,
@@ -39,65 +40,10 @@ class Twitter {
     }
 
     _getBytes(str) {
-        let character;
-        let charBytes = 0;
-
-        for (let i = 0; i < str.length; i += 1) {
-            character = str.charAt(i);
-
-            if (encodeURIComponent(character).length > 4) charBytes += 2;
-            else charBytes += 1;
-        }
-
-        return charBytes;
+        return twitterText.parseTweet(str).weightedLength;
     }
 
     async _createTweet(content) {
-        if (this.CT0_TOKEN === undefined) {
-            throw new Error("'ct0_token' is undefined");
-        }
-        if (this.AUTH_TOKEN === undefined) {
-            throw new Error("'auth_token' is undefined");
-        }
-        let res = await fetch(
-            "https://x.com/i/api/graphql/IVdJU2Vjw2llhmJOAZy9Ow/CreateTweet",
-            {
-                headers: {
-                    accept: "*/*",
-                    "accept-language":
-                        "ko,en-US;q=0.9,en;q=0.8,zh-TW;q=0.7,zh;q=0.6",
-                    authorization:
-                        "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
-                    "content-type": "application/json",
-                    "x-client-transaction-id":
-                        "6+QQD3bLrBYD6fiXpBHIWcctI/n5jSVq+Kqqih0jc8uLA2zJ8L65ZEGoOvxmXo1FQkhERuh2IcA65JlCDvKh+xsUxC8y6A",
-                    "x-client-uuid": "94c60de8-d1bb-42d2-b06d-c39cf87a5725",
-                    "x-twitter-active-user": "yes",
-                    "x-twitter-client-language": "en",
-                    "x-csrf-token": `${this.CT0_TOKEN}`,
-                    cookie: `auth_token=${this.AUTH_TOKEN}; ct0=${this.CT0_TOKEN}`,
-                    Referer: "https://x.com/home",
-                },
-                body: JSON.stringify({
-                    variables: {
-                        tweet_text: content,
-                        dark_request: false,
-                        media: {
-                            media_entities: [],
-                            possibly_sensitive: false,
-                        },
-                        semantic_annotation_ids: [],
-                        disallowed_reply_options: null,
-                    },
-                    features,
-                }),
-                method: "POST",
-            }
-        );
-        return await res.json();
-    }
-
-    async _replyTweet(content, reply) {
         if (this.CT0_TOKEN === undefined) {
             throw new Error("'ct0_token' is undefined");
         }
@@ -143,19 +89,66 @@ class Twitter {
         return await res.json();
     }
 
-    async createTweet(content) {
-        let split_content = content.split("\n");
+    async _replyTweet(content, reply) {
+        if (this.CT0_TOKEN === undefined) {
+            throw new Error("'ct0_token' is undefined");
+        }
+        if (this.AUTH_TOKEN === undefined) {
+            throw new Error("'auth_token' is undefined");
+        }
+        let res = await fetch(
+            "https://x.com/i/api/graphql/IVdJU2Vjw2llhmJOAZy9Ow/CreateTweet",
+            {
+                headers: {
+                    accept: "*/*",
+                    "accept-language":
+                        "ko,en-US;q=0.9,en;q=0.8,zh-TW;q=0.7,zh;q=0.6",
+                    authorization:
+                        "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
+                    "content-type": "application/json",
+                    "x-client-transaction-id":
+                        "6+QQD3bLrBYD6fiXpBHIWcctI/n5jSVq+Kqqih0jc8uLA2zJ8L65ZEGoOvxmXo1FQkhERuh2IcA65JlCDvKh+xsUxC8y6A",
+                    "x-client-uuid": "94c60de8-d1bb-42d2-b06d-c39cf87a5725",
+                    "x-twitter-active-user": "yes",
+                    "x-twitter-client-language": "en",
+                    "x-csrf-token": `${this.CT0_TOKEN}`,
+                    cookie: `auth_token=${this.AUTH_TOKEN}; ct0=${this.CT0_TOKEN}`,
+                    Referer: "https://x.com/home",
+                },
+                body: JSON.stringify({
+                    variables: {
+                        tweet_text: content,
+                        dark_request: false,
+                        media: {
+                            media_entities: [],
+                            possibly_sensitive: false,
+                        },
+                        reply: {
+                            in_reply_to_tweet_id: reply,
+                            exclude_reply_user_ids: [],
+                        },
+                        semantic_annotation_ids: [],
+                        disallowed_reply_options: null,
+                    },
+                    features,
+                }),
+                method: "POST",
+            }
+        );
+        return await res.json();
+    }
+
+    splitTextByNewline(text) {
+        let split_content = text.split("\n");
         let j = 0;
 
-        for (
-            let i = 0;
-            i < Math.ceil(this._getBytes(content) / MAX_LENGTH);
-            i++
-        ) {
+        let result = [];
+
+        for (let i = 0; i < Math.ceil(this._getBytes(text) / MAX_LENGTH); i++) {
             let tweet_content = "";
             for (; j < split_content.length; j++) {
                 let currBytes = this._getBytes(
-                    tweet_content + "\n" + split_content[j]
+                    (tweet_content + "\n" + split_content[j]).trim()
                 );
                 if (currBytes > MAX_LENGTH) {
                     break;
@@ -163,13 +156,62 @@ class Twitter {
                     tweet_content += "\n" + split_content[j];
                 }
             }
-            tweet_content = tweet_content.trim();
-            if (tweet_content.length == 0) {
-                console.log("wtf");
-            } else {
-                console.log(tweet_content);
-                console.log("=======");
+            if (tweet_content.length > 0) result.push(tweet_content.trim());
+        }
+
+        return result;
+    }
+
+    splitTextByWord(text) {
+        let split_content = text.split(" ");
+        let j = 0;
+
+        let result = [];
+
+        for (let i = 0; i < Math.ceil(this._getBytes(text) / MAX_LENGTH); i++) {
+            let tweet_content = "";
+            for (; j < split_content.length; j++) {
+                let currBytes = this._getBytes(
+                    (tweet_content + " " + split_content[j]).trim()
+                );
+                if (currBytes > MAX_LENGTH) {
+                    break;
+                } else {
+                    tweet_content += " " + split_content[j];
+                }
             }
+            if (tweet_content.length > 0) result.push(tweet_content.trim());
+        }
+
+        return result;
+    }
+
+    async createTweet(content) {
+        let split_content = this.splitTextByNewline(content);
+        console.log(split_content.join("\n" + "=".repeat(10) + "\n"));
+
+        if (split_content.join("\n").length !== content.length) {
+            console.log("fuck. this shit is too big to split newline");
+            split_content = this.splitTextByWord(content);
+            console.log(split_content.join("\n" + "=".repeat(10) + "\n"));
+
+            if (split_content.join(" ").length !== content.length) {
+                throw new Error(
+                    "this shit is fucking toooooo big. but that is just song info. why too big?????"
+                );
+            }
+        }
+
+        if (split_content.length > 1) {
+            let rest_id = await this._createTweet(split_content[0]);
+            for (let i = 1; i < split_content.length; i++) {
+                await this._replyTweet(
+                    split_content[i],
+                    rest_id.data.create_tweet.tweet_results.result.rest_id
+                );
+            }
+        } else {
+            await this._createTweet(content);
         }
     }
 }
