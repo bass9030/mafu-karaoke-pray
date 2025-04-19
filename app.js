@@ -1,5 +1,6 @@
 const Twitter = require("./createTweet");
 const { getNewSongKY, getNewSongTJ, TYPE } = require("./getKaraokeNewSong");
+const sendWebhook = require("./sendWebhook");
 const songLogDB = require("./songLogDB");
 const Tweet = new Twitter(process.env.X_CT0_TOKEN, process.env.X_AUTH_TOKEN);
 
@@ -9,6 +10,9 @@ async function checkNewSong() {
     try {
         db.openDB();
         await db.initializeTable();
+
+        let date = new Date();
+        if (await db.isSent(date)) return;
 
         let tjNew = await getNewSongTJ();
         let kyNew = await getNewSongKY();
@@ -45,33 +49,31 @@ async function checkNewSong() {
             }
         }
 
-        needNotify = [
-            {
-                type: TYPE.TJ,
-                songId: "",
-            },
-        ];
-
         if (needNotify.length > 0) {
-            console.log(needNotify);
+            console.log(`신곡 ${needNotify.length}개 발견`);
             Tweet.createTweet(
                 "신곡 떴나????\n\n" +
                     needNotify
                         .map((e) => {
                             return `[${e.type === TYPE.TJ ? "TJ" : "금영"} | ${
-                                e.songid
-                            }] ${e.title}`;
+                                e.songId
+                            }] ${e.title} (가수: ${e.singer}, 작곡: ${
+                                e.composer
+                            }, 작사: ${e.writer})`;
                         })
-                        .join("\n")
+                        .join("\n") +
+                    "\n#まふまふ #마후마후 #노래방 #신곡 #TJ #금영"
             );
         } else {
+            console.log("신곡 없음");
             let dday = await db.getDDay();
-            // console.log(`마후 신곡 노래방 등록 기원 ${dday}일차...`);
             Tweet.createTweet(
                 `마후마후 신곡 노래방 등록 기원 ${dday}일차\n` +
-                    `#まふまふ #노래방 #신곡 #TJ #금영`
+                    `#まふまふ #마후마후 #노래방 #신곡 #TJ #금영`
             );
         }
+
+        db.setSent(date);
     } catch (e) {
         console.error(e);
         sendWebhook(
@@ -87,7 +89,9 @@ async function checkNewSong() {
 
 function interval() {
     let date = new Date();
-    if (date.getHours() == 0 && date.getMinutes() == 0) checkNewSong();
+    if (date.getHours() == 0 && date.getMinutes() == 0) {
+        checkNewSong();
+    }
     setTimeout(interval, 1000 * 60);
 }
 
