@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@types/node": "^22.14.1",
-    "sqlite3": "^5.1.7"
+    "better-sqlite3": "^11.9.1",
+    "twitter-text": "^3.1.0"
   }
 }
