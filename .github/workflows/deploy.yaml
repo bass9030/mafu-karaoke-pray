@@ -41,10 +41,11 @@ jobs:
                 username: linuxserver.io
                 port: ${{ secrets.PORT }}
                 script: |
-                  ssh -o StrictHostKeyChecking=no bass9030@web-server /bin/bash << 'EOT'
-                  docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
-                  docker rmi -f $(docker images -aq "mafu-karaoke-pray")
-                  docker load --input /tmp/mafu-karaoke-pray.tar
-                  docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml --env-file /home/bass9030/mafu-karaoke-pray/.env up -d
-                  rm /tmp/mafu-karaoke-pray.tar
-                  EOT
+                  ssh -o StrictHostKeyChecking=no bass9030@web-server "
+                      docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
+                      docker rmi -f $(docker images -aq "mafu-karaoke-pray")
+                      docker load --input /tmp/mafu-karaoke-pray.tar
+                      docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml --env-file /home/bass9030/mafu-karaoke-pray/.env up -d
+                      rm /tmp/mafu-karaoke-pray.tar
+                      exit
+                  "
