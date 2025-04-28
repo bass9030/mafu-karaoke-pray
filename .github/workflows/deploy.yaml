@@ -32,11 +32,11 @@ jobs:
                   chmod 664 ./mafu-karaoke-pray.tar
 
             - name: Upload docker image
-              run: scp -v ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
+              run: scp -o StrictHostKeyChecking=no -v ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
 
             - name: Restarting service
               run: |
-                  ssh bass9030@web-server
+                  ssh -o StrictHostKeyChecking=no bass9030@web-server
                   docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
                   docker rmi -f $(docker images -aq "mafu-karaoke-pray")
                   docker load --input /tmp/mafu-karaoke-pray.tar
