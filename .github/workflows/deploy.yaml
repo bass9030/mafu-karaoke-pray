@@ -22,11 +22,10 @@ jobs:
                   oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
                   tags: tag:webserver
 
-            - name: Setup SSH Key
+            - name: Check Tailscale Connection
               run: |
-                  mkdir -p ~/.ssh
-                  MACHINE_IP="$(tailscale ip -4 web-server)"
-                  ssh-keyscan $MACHINE_IP >> ~/.ssh/known_hosts
+                  tailscale status
+                  tailscale ping web-server
 
             - uses: actions/checkout@v3
               name: Clone repository
