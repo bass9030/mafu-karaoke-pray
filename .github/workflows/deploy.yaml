@@ -35,17 +35,12 @@ jobs:
               run: scp -v -o StrictHostKeyChecking=no ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
 
             - name: Restarting service
-              uses: appleboy/ssh-action@v1
-              with:
-                host: ${{ secrets.HOST }}
-                username: linuxserver.io
-                port: ${{ secrets.PORT }}
-                script: |
-                  ssh -o StrictHostKeyChecking=no bass9030@web-server "
-                      docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
-                      docker rmi -f $(docker images -aq "mafu-karaoke-pray")
-                      docker load --input /tmp/mafu-karaoke-pray.tar
-                      docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml --env-file /home/bass9030/mafu-karaoke-pray/.env up -d
-                      rm /tmp/mafu-karaoke-pray.tar
-                      exit
-                  "
+              run: |
+                ssh -o StrictHostKeyChecking=no bass9030@web-server "
+                  docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
+                  docker rmi -f $(docker images -aq "mafu-karaoke-pray")
+                  docker load --input /tmp/mafu-karaoke-pray.tar
+                  docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml --env-file /home/bass9030/mafu-karaoke-pray/.env up -d
+                  rm /tmp/mafu-karaoke-pray.tar
+                  exit
+                "
