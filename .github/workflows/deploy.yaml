@@ -25,6 +25,7 @@ jobs:
             - name: Check Tailscale Connection
               run: |
                   tailscale status
+                  tailscale netcheck
                   tailscale ping web-server
 
             - uses: actions/checkout@v3
