@@ -22,13 +22,17 @@ jobs:
                   oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
                   tags: tag:webserver
 
+            - uses: actions/checkout@v3
+              name: Clone repository
+              
             - name: build docker image
-              uses: actions/checkout@v2
               run: |
                   docker build -t mafu-karaoke-pray -f dockerfile .
                   docker image save mafu-karaoke-pray:latest -o ./mafu-karaoke-pray.tar
                   chmod 664 ./mafu-karaoke-pray.tar
-                  scp ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
+
+            - name: Upload docker image
+              run: scp ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
 
             - name: Restarting service
               uses: appleboy/ssh-action@master
@@ -39,6 +43,6 @@ jobs:
                   script: |
                       docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
                       docker rmi -f $(docker images -aq "mafu-karaoke-pray")
-                      docker load --input /home/bass9030/mafu-karaoke-pray/mafu-karaoke-pray.tar
+                      docker load --input /tmp/mafu-karaoke-pray.tar
                       docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml --env-file /home/bass9030/mafu-karaoke-pray/.env up -d
                       rm /home/bass9030/mafu-karaoke-pray/mafu-karaoke-pray.tar
