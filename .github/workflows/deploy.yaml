@@ -10,33 +10,30 @@ on:
                 required: true
                 default: "warning"
             tags:
-                description: "Test scenario tags"
+                description: "수동 빌드"
 jobs:
-    build:
-        runs-on: self-hosted
+    deploy:
+        runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v2
-            - name: Build
+            - uses: tailscale/github-action@v3
+              name: Connect to Tailscale network
+              with:
+                  oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+                  oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+                  tags: tag:webserver
+
+            - name: build docker image
               run: |
                   docker build -t mafu-karaoke-pray -f dockerfile .
                   docker image save mafu-karaoke-pray:latest -o ./mafu-karaoke-pray.tar
                   chmod 664 ./mafu-karaoke-pray.tar
-            - name: Deploy web server image
-              uses: appleboy/scp-action@master
-              with:
-                  host: ${{ secrets.HOST }}
-                  username: ${{ secrets.USERNAME }}
-                  password: ${{ secrets.PASSWORD }}
-                  port: 22
-                  source: "./mafu-karaoke-pray.tar"
-                  target: "/home/bass9030/mafu-karaoke-pray"
+                  scp ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
+
             - name: Restarting service
               uses: appleboy/ssh-action@master
-              id: deploy
               with:
-                  host: ${{ secrets.HOST }}
-                  username: ${{ secrets.USERNAME }}
-                  password: ${{ secrets.PASSWORD }}
+                  host: web-server
+                  username: bass9030
                   port: 22
                   script: |
                       docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
