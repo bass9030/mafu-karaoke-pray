@@ -23,6 +23,7 @@ jobs:
                   tags: tag:webserver
 
             - name: build docker image
+              uses: action/checkout@v2
               run: |
                   docker build -t mafu-karaoke-pray -f dockerfile .
                   docker image save mafu-karaoke-pray:latest -o ./mafu-karaoke-pray.tar
