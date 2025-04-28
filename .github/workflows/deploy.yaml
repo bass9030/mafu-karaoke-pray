@@ -20,7 +20,6 @@ jobs:
               with:
                   oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
                   oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-                  version: latest
                   tags: tag:webserver
 
             - uses: actions/checkout@v3
@@ -33,12 +32,11 @@ jobs:
                   chmod 664 ./mafu-karaoke-pray.tar
 
             - name: Upload docker image
-              run: |
-                      tailscale ssh bass9030@web-server "cat > /tmp/mafu-karaoke-pray.tar" < ./mafu-karaoke-pray.tar
+              run: scp ./mafu-karaoke-pray.tar bass9030@web-server:/tmp
 
             - name: Restarting service
               run: |
-                  ssh -o StrictHostKeyChecking=no bass9030@web-server
+                  ssh bass9030@web-server
                   docker-compose -f /home/bass9030/mafu-karaoke-pray/docker-compose.yml down
                   docker rmi -f $(docker images -aq "mafu-karaoke-pray")
                   docker load --input /tmp/mafu-karaoke-pray.tar
